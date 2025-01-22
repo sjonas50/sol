@@ -7,7 +7,7 @@ pub mod events;
 use anchor_lang::prelude::*;
 
 pub use constants::*;
-pub use instructions::*;
+use instructions::*;
 pub use state::*;
 pub use events::*;
 
@@ -18,6 +18,6 @@ pub mod f44 {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        initialize::handler(ctx)
+        instructions::initialize(ctx)
     }
 }
