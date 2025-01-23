@@ -150,7 +150,12 @@ pub fn sell(ctx: Context<Sell>, amount: u64, min_sol_output: u64) -> Result<()> 
 }
 
 fn calculate_sol_cost(bonding_curve: &Account<BondingCurve>, token_amount: u64) -> Result<u64> {
-    let sol_cost = ((token_amount as u128).checked_mul(bonding_curve.virtual_sol_reserves as u128).ok_or(F44Code::MathOverflow)?.checked_div(bonding_curve.virtual_token_reserves as u128).ok_or(F44Code::MathOverflow)?) as u64;
+    let price_per_token  = (bonding_curve.virtual_token_reserves as u128).checked_add(token_amount as u128).ok_or(F44Code::MathOverflow)?;
 
+    let total_liquidity = (bonding_curve.virtual_sol_reserves as u128).checked_mul(bonding_curve.virtual_token_reserves as u128).ok_or(F44Code::MathOverflow)?;
+
+    let new_sol_reserve = total_liquidity.checked_div(price_per_token).ok_or(F44Code::MathOverflow)?;
+
+    let sol_cost = ((bonding_curve.virtual_sol_reserves as u128).checked_sub(new_sol_reserve).ok_or(F44Code::MathOverflow)?) as u64;
     Ok(sol_cost as u64)
 }

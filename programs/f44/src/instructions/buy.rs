@@ -189,7 +189,7 @@ fn calculate_sol_cost(bonding_curve: &Account<BondingCurve>, token_amount: u64) 
 
     let total_liquidity = (bonding_curve.virtual_sol_reserves as u128).checked_mul(bonding_curve.virtual_token_reserves as u128).ok_or(F44Code::MathOverflow)?;
 
-    let new_sol_reserve = total_liquidity.checked_div(price_per_token-1).ok_or(F44Code::MathOverflow)?;
+    let new_sol_reserve = total_liquidity.checked_div(price_per_token).ok_or(F44Code::MathOverflow)?;
 
     let sol_cost = new_sol_reserve.checked_sub(bonding_curve.virtual_sol_reserves as u128).ok_or(F44Code::MathOverflow)?;
 
