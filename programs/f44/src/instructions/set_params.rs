@@ -34,5 +34,28 @@ pub fn set_params(ctx: Context<SetParams>, fee_recipient: Pubkey,owner_wallet: P
     global.create_fee = create_fee;
     global.authority = ctx.accounts.user.key();
 
+    msg!("Set params\n
+        fee recipient is {:?}\n
+        owner wallet is {:?}\n
+        initial virtual token reserves is {:?}\n
+        initial virtual sol reserves is {:?}\n
+        initial real token reserves is {:?}\n
+        token total supply is {:?}\n
+        mcap limit is {:?}\n
+        fee basis points is {:?}\n
+        create fee is {:?}\n
+        authority {:?}", 
+        global.fee_recipient,
+        global.owner_wallet,
+        global.initial_virtual_token_reserves,
+        global.initial_virtual_sol_reserves,
+        global.initial_real_token_reserves,
+        global.token_total_supply,
+        global.mcap_limit,
+        global.fee_basis_points,
+        global.create_fee,
+        global.authority,
+    );
+
     Ok(())
 }

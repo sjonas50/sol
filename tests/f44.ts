@@ -116,14 +116,14 @@ describe("f44", () => {
   });
 
   it("set params", async () => {
-    const initialVirtualTokenReserves = "1073000000000000000";
+    const initialVirtualTokenReserves = "1073000000000000";
     const initialVirtualSolReserves = "30000000000";
     const initialRealTokenReserves = "793100000000000000";
     const tokenTotalSupply = "1000000000000000000";
     const feeBasisPoints = 100;
     const mcap = "300000000000";
     const ownerWallet = new PublicKey(
-      "Bmed1qoe6u8VxmJ5p6SW77fb7LiSqWmQdTtKTz5dyh62"
+      "2vKHp96ccuX6pP55o8mzCfRS7rD5Lz3gDWGQMwHjdEpF"
     );
     const createFee = 6900000; // 1sol (1sol = 10 ** 9 lamports) 0.0069 $1
 
@@ -160,9 +160,10 @@ describe("f44", () => {
         mcapLimit: parseInt(globalData.mcapLimit.toString()),
         createFee: parseInt(globalData.createFee.toString()),
       });
+      console.log("tx->", tx);
     } catch (error) {
       console.log(error);
     }
   });
-  
+
 });
