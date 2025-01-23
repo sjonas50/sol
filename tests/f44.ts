@@ -114,4 +114,55 @@ describe("f44", () => {
       console.log(error);
     }
   });
+
+  it("set params", async () => {
+    const initialVirtualTokenReserves = "1073000000000000000";
+    const initialVirtualSolReserves = "30000000000";
+    const initialRealTokenReserves = "793100000000000000";
+    const tokenTotalSupply = "1000000000000000000";
+    const feeBasisPoints = 100;
+    const mcap = "300000000000";
+    const ownerWallet = new PublicKey(
+      "Bmed1qoe6u8VxmJ5p6SW77fb7LiSqWmQdTtKTz5dyh62"
+    );
+    const createFee = 6900000; // 1sol (1sol = 10 ** 9 lamports) 0.0069 $1
+
+    try {
+      const tx = await program.rpc.setParams(
+        feeRecipient,
+        ownerWallet,
+        new anchor.BN(initialVirtualTokenReserves),
+        new anchor.BN(initialVirtualSolReserves),
+        new anchor.BN(initialRealTokenReserves),
+        new anchor.BN(tokenTotalSupply),
+        new anchor.BN(mcap),
+        new anchor.BN(feeBasisPoints),
+        new anchor.BN(createFee),
+        {
+          accounts: {
+            global,
+            user: owner.publicKey
+          },
+          signers: [owner]
+        }
+      );
+      const globalData = await program.account.global.fetch(global);
+      console.log("globalData->", {
+        initialized: globalData.initialized,
+        authority: globalData.authority.toBase58(),
+        feeRecipient: globalData.feeRecipient.toBase58(),
+        ownerWallet: globalData.ownerWallet.toBase58(),
+        initialVirtualTokenReserves: parseInt(globalData.initialVirtualTokenReserves.toString()),
+        initialVirtualSolReserves: parseInt(globalData.initialVirtualSolReserves.toString()),
+        initialRealTokenReserves: parseInt(globalData.initialRealTokenReserves.toString()),
+        tokenTotalSupply: parseInt(globalData.tokenTotalSupply.toString()),
+        feeBasisPoints: parseInt(globalData.feeBasisPoints.toString()),
+        mcapLimit: parseInt(globalData.mcapLimit.toString()),
+        createFee: parseInt(globalData.createFee.toString()),
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  });
+  
 });
