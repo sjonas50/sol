@@ -6,6 +6,7 @@ pub struct Global {
     pub authority: Pubkey,
     pub fee_recipient: Pubkey,
     pub owner_wallet: Pubkey,
+    pub f44_mint: Pubkey,
     pub f44_vault: u64,
     pub f44_supply: u64,
     pub fee_basis_points: u64,
