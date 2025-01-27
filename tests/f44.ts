@@ -118,9 +118,9 @@ describe("f44", () => {
   it("set params", async () => {
     const initialVirtualTokenReserves = "1073000000000000";
     const initialVirtualSolReserves = "30000000000";
-    const initialRealTokenReserves = "793100000000000000";
-    const tokenTotalSupply = "1000000000000000000";
-    const feeBasisPoints = 100;
+    const initialRealTokenReserves = "793100000000000";
+    const tokenTotalSupply = "1000000000000000";
+    const feeBasisPoints = 100; // 1% for buy & sell
     const mcap = "300000000000";
     const ownerWallet = new PublicKey(
       "2vKHp96ccuX6pP55o8mzCfRS7rD5Lz3gDWGQMwHjdEpF"
