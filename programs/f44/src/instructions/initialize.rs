@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token::{Mint,Token,TokenAccount, Transfer, transfer};
 
 use crate::{
     constants::GLOBAL_STATE_SEED,
@@ -19,16 +20,30 @@ pub struct Initialize<'info> {
     pub global: Box<Account<'info, Global>>,
     #[account(mut)]
     pub owner: Signer<'info>,
+
+    pub f44_mint: Box<Account<'info, Mint>>,
+    #[account(
+        init,
+        payer = owner,
+        seeds = [F44_VAULT_SEED],
+        bump,
+        token::mint = f44_mint,
+        token::authority = global,
+    )]
+    pub f44_vault: Box<Account<'info, TokenAccount>>,
+
     pub system_program: Program<'info, System>,
 }
 
 pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-    let global = &mut ctx.accounts.global;
+    let accts = ctx.accounts;
 
-    require!(global.initialized == false, F44Code::AlreadyInitialized);
+    require!(accts.global.initialized == false, F44Code::AlreadyInitialized);
     
-    global.authority = ctx.accounts.owner.key();
-    global.initialized = true;
+    accts.global.authority = accts.owner.key();
+    accts.global.initialized = true;
+    accts.global.f44_mint = accts.f44_mint.key();
+    accts.global.f44_vault = accts.f44_vault.key();
     
     Ok(())
 }

@@ -20,7 +20,7 @@ pub mod f44 {
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         instructions::initialize(ctx)
     }
-
+    
     pub fn set_params(
         ctx: Context<SetParams>,
         fee_recipient: Pubkey,
