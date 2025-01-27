@@ -26,14 +26,6 @@ pub struct Create<'info> {
     pub bonding_curve: Box<Account<'info, BondingCurve>>,
 
     #[account(
-        mut,
-        seeds = [SOL_VAULT_SEED, mint.key().as_ref()],
-        bump
-    )]
-    /// CHECK: this should be set by admin
-    pub vault: UncheckedAccount <'info>,
-
-    #[account(
         init_if_needed,
         payer = user,
         seeds = [VAULT_SEED, mint.key().as_ref()],

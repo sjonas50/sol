@@ -34,8 +34,7 @@ pub fn set_params(ctx: Context<SetParams>, fee_recipient: Pubkey,owner_wallet: P
         owner wallet is {:?}\n
         mcap limit is {:?}\n
         fee basis points is {:?}\n
-        create fee is {:?}\n
-        authority {:?}", 
+        create fee is {:?}", 
         global.fee_recipient,
         global.owner_wallet,
         global.mcap_limit,

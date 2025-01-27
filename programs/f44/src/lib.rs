@@ -39,20 +39,20 @@ pub mod f44 {
         )
     }
 
-    pub fn create(ctx: Context<Create>, amount: u64) -> Result<()> {
-        instructions::create(ctx, amount)
-    }
+    // pub fn create(ctx: Context<Create>, amount: u64) -> Result<()> {
+    //     instructions::create(ctx, amount)
+    // }
 
-    pub fn buy(ctx: Context<Buy>, amount: u64, max_sol_cost: u64) -> Result<()> {
-        instructions::buy(ctx, amount, max_sol_cost)
-    }
+    // pub fn buy(ctx: Context<Buy>, amount: u64, max_sol_cost: u64) -> Result<()> {
+    //     instructions::buy(ctx, amount, max_sol_cost)
+    // }
 
-    pub fn sell(ctx: Context<Sell>, amount: u64, min_sol_output: u64) -> Result<()> {
-        instructions::sell(ctx, amount, min_sol_output)
-    }
+    // pub fn sell(ctx: Context<Sell>, amount: u64, min_sol_output: u64) -> Result<()> {
+    //     instructions::sell(ctx, amount, min_sol_output)
+    // }
 
-    pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
-        instructions::withdraw(ctx)
-    }
+    // pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
+    //     instructions::withdraw(ctx)
+    // }
     
 }

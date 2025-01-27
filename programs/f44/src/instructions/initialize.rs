@@ -1,8 +1,8 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint,Token,TokenAccount, Transfer, transfer};
+use anchor_spl::token::{Mint,Token,TokenAccount};
 
 use crate::{
-    constants::GLOBAL_STATE_SEED,
+    constants::{GLOBAL_STATE_SEED, F44_VAULT_SEED},
     state::Global,
     error::*,
 };
@@ -18,14 +18,16 @@ pub struct Initialize<'info> {
         space = 8 + size_of::<Global>()
     )]
     pub global: Box<Account<'info, Global>>,
+
     #[account(mut)]
     pub owner: Signer<'info>,
 
     pub f44_mint: Box<Account<'info, Mint>>,
+
     #[account(
         init,
         payer = owner,
-        seeds = [F44_VAULT_SEED],
+        seeds = [F44_VAULT_SEED, f44_mint.key().as_ref()],
         bump,
         token::mint = f44_mint,
         token::authority = global,
@@ -33,6 +35,7 @@ pub struct Initialize<'info> {
     pub f44_vault: Box<Account<'info, TokenAccount>>,
 
     pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
 }
 
 pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
