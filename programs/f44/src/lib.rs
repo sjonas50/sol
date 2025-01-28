@@ -20,7 +20,7 @@ pub mod f44 {
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         instructions::initialize(ctx)
     }
-    
+
     pub fn set_params(
         ctx: Context<SetParams>,
         fee_recipient: Pubkey,
@@ -39,9 +39,12 @@ pub mod f44 {
         )
     }
 
-    // pub fn create(ctx: Context<Create>, amount: u64) -> Result<()> {
-    //     instructions::create(ctx, amount)
-    // }
+    pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
+        instructions::deposit(ctx, amount)
+    }
+    pub fn create(ctx: Context<Create>, initial_price: u64, curve_slope: u64, amount: u64) -> Result<()> {
+        instructions::create(ctx,initial_price, curve_slope, amount)
+    }
 
     // pub fn buy(ctx: Context<Buy>, amount: u64, max_sol_cost: u64) -> Result<()> {
     //     instructions::buy(ctx, amount, max_sol_cost)

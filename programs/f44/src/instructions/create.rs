@@ -63,6 +63,34 @@ pub struct Create<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
+#[derive(Accounts)]
+pub struct Deposit<'info> {
+    #[account(
+        mut, 
+        seeds = [GLOBAL_STATE_SEED],
+        bump,
+    )]
+    pub global: Box<Account<'info, Global>>,
+
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    pub f44_mint: Box<Account<'info, Mint>>,
+
+    #[account(
+        mut,
+        seeds = [F44_VAULT_SEED, f44_mint.key().as_ref()],
+        bump,
+    )]
+    pub f44_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut)]
+    pub associated_owner_account: Box<Account<'info, TokenAccount>>,
+
+    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
+}
+
 pub fn create(ctx: Context<Create>, initial_price: u64, curve_slope: u64, amount: u64) -> Result<()> {
     let accts = ctx.accounts;
     let decimals = accts.mint.decimals;
@@ -127,6 +155,24 @@ pub fn create(ctx: Context<Create>, initial_price: u64, curve_slope: u64, amount
             user: accts.user.key()
         }
     }
+
+    Ok(())
+}
+
+pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
+    let accts = ctx.accounts;
+    // Deposit f44 to the vault account
+    let cpi_ctx = CpiContext::new(
+        accts.token_program.to_account_info(),
+        Transfer {
+            from: accts.associated_owner_account.to_account_info().clone(),
+            to: accts.f44_vault.to_account_info().clone(),
+            authority: accts.owner.to_account_info().clone(),
+        },
+    );
+    transfer(cpi_ctx, amount)?;
+
+    accts.global.f44_supply += amount;
 
     Ok(())
 }
