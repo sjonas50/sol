@@ -69,7 +69,7 @@ pub fn create(ctx: Context<Create>, initial_price: u64, curve_slope: u64, amount
     let f44_decimals = accts.f44_mint.decimals;
 
     require!(accts.global.initialized == true, F44Code::NotInitialized);
-    require!(amount == accts.global.agent_amount * 10_u64.pow(decimals), RoundError::NotEnoughAmount);
+    require!(amount == accts.global.agent_amount * 10_u64.pow(decimals.into()), RoundError::NotEnoughAmount);
 
     let cpi_ctx = CpiContext::new(
         accts.token_program.to_account_info(),
@@ -101,7 +101,7 @@ pub fn create(ctx: Context<Create>, initial_price: u64, curve_slope: u64, amount
     msg!(
         "transfer f44 tokens from user to bonding reserve pool as fee - F44: {}, amount: {}",
         accts.f44_mint.key(),
-        accts.global.fee_amount / 10_u64.pow(f44_decimals),
+        accts.global.fee_amount / 10_u64.pow(f44_decimals.into()),
     );
     // init the bonding curve
     accts.bonding_curve.initial_price = initial_price;
