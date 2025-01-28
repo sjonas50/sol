@@ -5,7 +5,7 @@ use anchor_spl::{
 };
 use std::mem::size_of;
 use crate::{
-    constants::{GLOBAL_STATE_SEED, SOL_VAULT_SEED, BONDING_CURVE, VAULT_SEED},
+    constants::{GLOBAL_STATE_SEED, F44_VAULT_SEED, BONDING_CURVE, VAULT_SEED},
     state::{Global, BondingCurve},
     error::*,
     events::*,
