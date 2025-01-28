@@ -46,13 +46,13 @@ pub mod f44 {
         instructions::create(ctx,initial_price, curve_slope, amount)
     }
 
-    pub fn buy(ctx: Context<Buy>, amount: u64, max_sol_cost: u64) -> Result<()> {
-        instructions::buy(ctx, amount, max_sol_cost)
+    pub fn buy(ctx: Context<Buy>, amount: u64, max_f44_amount: u64) -> Result<()> {
+        instructions::buy(ctx, amount, max_f44_amount)
     }
 
-    // pub fn sell(ctx: Context<Sell>, amount: u64, min_sol_output: u64) -> Result<()> {
-    //     instructions::sell(ctx, amount, min_sol_output)
-    // }
+    pub fn sell(ctx: Context<Sell>, amount: u64, min_f44_output: u64) -> Result<()> {
+        instructions::sell(ctx, amount, min_f44_output)
+    }
 
     // pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
     //     instructions::withdraw(ctx)

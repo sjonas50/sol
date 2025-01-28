@@ -3,11 +3,10 @@ use anchor_spl::token::{Mint,Token,TokenAccount,Transfer, transfer};
 
 use crate::{
     state::{Global, BondingCurve},
-    constants::{GLOBAL_STATE_SEED, BONDING_CURVE, SOL_VAULT_SEED},
+    constants::{GLOBAL_STATE_SEED, BONDING_CURVE, F44_VAULT_SEED},
     error::*,
     events::*,
 };
-use solana_program::{program::invoke_signed, system_instruction};
 
 #[derive(Accounts)]
 pub struct Sell<'info> {
@@ -16,20 +15,9 @@ pub struct Sell<'info> {
         bump
     )]
     pub global: Box<Account<'info, Global>>,
-    /// CHECK:` doc comment explaining why no checks through types are necessary.
+
     #[account(mut)]
-    pub fee_recipient: UncheckedAccount<'info>,
-
-    pub mint: Account<'info, Mint>,
-
-    #[account(
-        mut,
-        seeds = [SOL_VAULT_SEED, mint.key().as_ref()],
-        bump
-    )]
-    /// CHECK: this should be set by admin
-    pub vault: UncheckedAccount<'info>,
-
+    pub mint: Box<Account<'info, Mint>>,
 
     #[account(
         mut,
@@ -51,6 +39,18 @@ pub struct Sell<'info> {
         token::authority = user
     )]
     pub associated_user: Box<Account<'info, TokenAccount>>,
+
+    pub f44_mint: Box<Account<'info, Mint>>,
+
+    #[account(
+        mut,
+        seeds = [F44_VAULT_SEED, f44_mint.key().as_ref()],
+        bump,
+    )]
+    pub f44_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut)]
+    pub associated_user_f44_account: Box<Account<'info, TokenAccount>>,
     
     #[account(mut)]
     pub user: Signer<'info>,
@@ -59,48 +59,41 @@ pub struct Sell<'info> {
     pub clock: Sysvar<'info, Clock>,
 }
 
-pub fn sell(ctx: Context<Sell>, amount: u64, min_sol_output: u64) -> Result<()> {
+pub fn sell(ctx: Context<Sell>, amount: u64, min_f44_output: u64) -> Result<()> {
     let accts = ctx.accounts;
-    require!(accts.fee_recipient.key() == accts.global.fee_recipient, F44Code::UnValidFeeRecipient);
     require!(accts.bonding_curve.complete == false, F44Code::BondingCurveComplete);
     require!(amount >0 , F44Code::ZeroAmount);
+    require!(accts.bonding_curve.token_reserves >= amount as f64, F44Code::NotEnoughAmount);
 
     let bonding_curve = &accts.bonding_curve;
 
     // Calculate the required SOL cost for the given token amount
-    let sol_cost = calculate_sol_cost(bonding_curve, amount)?;
+    let f44_amount = calculate_f44_cost(bonding_curve, amount as f64)?;
 
     // Ensure the SOL cost does not exceed max_sol_cost
-    require!(sol_cost >= min_sol_output, F44Code::TooLittleSolReceived);
+    require!(f44_amount >= min_f44_output as f64, F44Code::TooLittleF44Received);
 
-    // send sol from vault account to user (calculate fee)
-    let binding = accts.mint.key();
+    // send f44 token from pool reserve to user
+    let binding = accts.f44_mint.key();
 
-    let (_, bump) = Pubkey::find_program_address(&[SOL_VAULT_SEED, binding.as_ref()], ctx.program_id);
-    let vault_seeds = &[SOL_VAULT_SEED, binding.as_ref(), &[bump]];
+    let (_, bump) = Pubkey::find_program_address(&[F44_VAULT_SEED, binding.as_ref()], ctx.program_id);
+    let vault_seeds = &[F44_VAULT_SEED, binding.as_ref(), &[bump]];
     let signer = &[&vault_seeds[..]];
 
-    let fee_amount = accts.global.fee_basis_points * sol_cost / 10000;
-
-    invoke_signed(
-        &system_instruction::transfer(&accts.vault.key(), &accts.fee_recipient.key(), fee_amount),
-        &[
-            accts.vault.to_account_info().clone(),
-            accts.fee_recipient.to_account_info().clone(),
-            accts.system_program.to_account_info().clone(),
-        ],
-        signer,
+    let cpi_ctx = CpiContext::new(
+        accts.token_program.to_account_info(),
+        Transfer {
+            from: accts.f44_vault.to_account_info().clone(),
+            to: accts.associated_user_f44_account.to_account_info().clone(),
+            authority: accts.global.to_account_info().clone(),
+        },
+    );
+    transfer(
+        cpi_ctx.with_signer(signer),
+        f44_amount as u64,
     )?;
+    accts.global.f44_supply -= f44_amount as u64;
 
-    invoke_signed(
-        &system_instruction::transfer(&accts.vault.key(), &accts.user.key(), sol_cost - fee_amount),
-        &[
-            accts.vault.to_account_info().clone(),
-            accts.user.to_account_info().clone(),
-            accts.system_program.to_account_info().clone(),
-        ],
-        signer,
-    )?;
     // send tokens to the vault
     let cpi_ctx = CpiContext::new(
         accts.token_program.to_account_info(),
@@ -113,49 +106,47 @@ pub fn sell(ctx: Context<Sell>, amount: u64, min_sol_output: u64) -> Result<()> 
     transfer(cpi_ctx, amount)?;
 
     //  update the bonding curve
-    accts.bonding_curve.real_token_reserves += amount;
-    accts.bonding_curve.virtual_token_reserves += amount;
-    accts.bonding_curve.virtual_sol_reserves -= sol_cost - fee_amount;
-    accts.bonding_curve.real_sol_reserves -= sol_cost - fee_amount;
+    let decimals = accts.mint.decimals;
+    accts.bonding_curve.token_reserves -= (amount / 10_u64.pow(decimals.into())) as f64;
 
     // Log the TradeEvent details
 
      msg!(
-        "Trade // Type: Sell, User: {}, Mint: {}, BondingCurve: {}, Timestamp: {}, SolCost: {}, Amount: {}, IsBuy: {}, VirtualSolReserves: {}, VirtualTokenReserves: {}",
+        "Trade // Type: Sell, User: {}, Mint: {}, BondingCurve: {}, Timestamp: {}, f44 Amount: {}, Amount: {}, IsBuy: {}, token_reserves: {}",
         accts.user.key(),
         accts.mint.key(),
         accts.bonding_curve.key(),
         accts.clock.unix_timestamp,
-        sol_cost,
+        f44_amount,
         amount,
         false,
-        accts.bonding_curve.virtual_sol_reserves,
-        accts.bonding_curve.virtual_token_reserves
+        accts.bonding_curve.token_reserves
     );
 
     emit!(
         TradeEvent { 
             mint: accts.mint.key(), 
-            sol_amount: sol_cost, 
-            token_amount: amount, 
+            amount: f44_amount as u64, 
+            token_amount: (amount / 10_u64.pow(decimals.into())) as f64,
             is_buy: false, 
             user: accts.user.key(), 
             timestamp: accts.clock.unix_timestamp, 
-            virtual_sol_reserves: accts.bonding_curve.virtual_sol_reserves, 
-            virtual_token_reserves: accts.bonding_curve.virtual_token_reserves, 
+            token_reserves: accts.bonding_curve.token_reserves, 
         }
     );
 
     Ok(())
 }
 
-fn calculate_sol_cost(bonding_curve: &Account<BondingCurve>, token_amount: u64) -> Result<u64> {
-    let price_per_token  = (bonding_curve.virtual_token_reserves as u128).checked_add(token_amount as u128).ok_or(F44Code::MathOverflow)?;
+fn calculate_f44_cost(bonding_curve: &Account<BondingCurve>, token_amount: f64) -> Result<f64> {
+    let first_price = bonding_curve.curve_slope * bonding_curve.token_reserves as f64 + bonding_curve.initial_price;
+    let last_price = bonding_curve.curve_slope * (bonding_curve.token_reserves as f64 - token_amount) + bonding_curve.initial_price;
+    msg!("The first price is {} and last price is {}", first_price.clone(), last_price.clone());
+    let average_price = (first_price + last_price) / 2.0;
+    msg!("The average price of token is {}", average_price);
 
-    let total_liquidity = (bonding_curve.virtual_sol_reserves as u128).checked_mul(bonding_curve.virtual_token_reserves as u128).ok_or(F44Code::MathOverflow)?;
+    let f44_amount = token_amount * average_price;
+    msg!("The F44 amount is {}", f44_amount);
 
-    let new_sol_reserve = total_liquidity.checked_div(price_per_token).ok_or(F44Code::MathOverflow)?;
-
-    let sol_cost = ((bonding_curve.virtual_sol_reserves as u128).checked_sub(new_sol_reserve).ok_or(F44Code::MathOverflow)?) as u64;
-    Ok(sol_cost as u64)
+    Ok(f44_amount)
 }

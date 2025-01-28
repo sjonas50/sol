@@ -14,8 +14,8 @@ pub enum F44Code {
     #[msg("slippage: Too much F44 Token required to buy the given amount of tokens.")]
     TooMuchF44Required,
 
-    #[msg("slippage: Too little SOL received to sell the given amount of tokens.")]
-    TooLittleSolReceived,
+    #[msg("slippage: Too little F44 Token received to sell the given amount of tokens.")]
+    TooLittleF44Received,
 
     #[msg("The mint does not match the bonding curve.")]
     MintDoesNotMatchBondingCurve,

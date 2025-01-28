@@ -166,7 +166,7 @@ pub fn buy(ctx: Context<Buy>, amount: u64, max_f44_amount: u64) -> Result<()> {
 
 fn calculate_f44_cost(bonding_curve: &Account<BondingCurve>, token_amount: f64) -> Result<f64> {
     let first_price = bonding_curve.curve_slope * bonding_curve.token_reserves as f64 + bonding_curve.initial_price;
-    let last_price = bonding_curve.curve_slope * (bonding_curve.token_reserves as f64 + token_amount as f64) + bonding_curve.initial_price;
+    let last_price = bonding_curve.curve_slope * (bonding_curve.token_reserves as f64 + token_amount) + bonding_curve.initial_price;
     msg!("The first price is {} and last price is {}", first_price.clone(), last_price.clone());
     let average_price = (first_price + last_price) / 2.0;
     msg!("The average price of token is {}", average_price);
