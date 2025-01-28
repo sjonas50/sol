@@ -69,7 +69,7 @@ pub fn create(ctx: Context<Create>, initial_price: u64, curve_slope: u64, amount
     let f44_decimals = accts.f44_mint.decimals;
 
     require!(accts.global.initialized == true, F44Code::NotInitialized);
-    require!(amount == accts.global.agent_amount * 10_u64.pow(decimals.into()), RoundError::NotEnoughAmount);
+    require!(amount == accts.global.agent_amount * 10_u64.pow(decimals.into()), F44Code::NotEnoughAmount);
 
     let cpi_ctx = CpiContext::new(
         accts.token_program.to_account_info(),
