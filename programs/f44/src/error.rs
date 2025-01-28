@@ -20,6 +20,9 @@ pub enum F44Code {
     #[msg("The mint does not match the bonding curve.")]
     MintDoesNotMatchBondingCurve,
 
+    #[msg("The agent token amount is not enough to create the bonding curve.")]
+    NotEnoughAmount,
+
     #[msg("The bonding curve has completed and liquidity migrated to raydium.")]
     BondingCurveComplete,
 

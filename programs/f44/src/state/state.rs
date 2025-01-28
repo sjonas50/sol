@@ -9,8 +9,8 @@ pub struct Global {
     pub f44_mint: Pubkey,
     pub f44_vault: Pubkey,
     pub f44_supply: u64,
-    pub fee_basis_points: u64,
-    pub mcap_limit: u64,
+    pub fee_amount: u64,
+    pub agent_amount: u64,
     pub create_fee: u64,
 }
 

@@ -26,7 +26,7 @@ pub mod f44 {
         fee_recipient: Pubkey,
         owner_wallet: Pubkey,
         mcap_limit: u64,
-        fee_basis_points: u64,
+        fee_amount: u64,
         create_fee: u64,
     ) -> Result<()> {
         instructions::set_params(
@@ -34,7 +34,7 @@ pub mod f44 {
             fee_recipient,
             owner_wallet,
             mcap_limit,
-            fee_basis_points,
+            fee_amount,
             create_fee,
         )
     }
