@@ -3,10 +3,9 @@ use anchor_spl::token::{Mint,Token,TokenAccount,Transfer, transfer};
 
 use crate::{
     state::{Global, BondingCurve},
-    constants::{GLOBAL_STATE_SEED, BONDING_CURVE, SOL_VAULT_SEED},
+    constants::{GLOBAL_STATE_SEED, BONDING_CURVE, F44_VAULT_SEED},
     error::*,
 };
-use solana_program::{program::invoke_signed, system_instruction};
 
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
@@ -18,13 +17,6 @@ pub struct Withdraw<'info> {
     
     pub mint: Account<'info, Mint>,
 
-    #[account(
-        mut,
-        seeds = [SOL_VAULT_SEED, mint.key().as_ref()],
-        bump
-    )]
-    /// CHECK: this should be set by admin
-    pub vault: AccountInfo<'info>,
     #[account(
         mut,
         seeds = [BONDING_CURVE, mint.key().as_ref()],
@@ -45,6 +37,17 @@ pub struct Withdraw<'info> {
         token::authority = owner_wallet
     )]
     pub associated_user: Account<'info, TokenAccount>,
+
+    pub f44_mint: Box<Account<'info, Mint>>,
+    #[account(
+        mut,
+        seeds = [F44_VAULT_SEED, f44_mint.key().as_ref()],
+        bump,
+    )]
+    pub f44_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut)]
+    pub associated_user_f44_account: Box<Account<'info, TokenAccount>>,
     
     #[account(mut)]
     pub owner_wallet: Signer<'info>,
@@ -62,23 +65,29 @@ pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
 
     let binding = accts.mint.key();
 
-    let (_, bump) = Pubkey::find_program_address(&[SOL_VAULT_SEED, binding.as_ref()], ctx.program_id);
-    let vault_seeds = &[SOL_VAULT_SEED, binding.as_ref(), &[bump]];
+    let (_, bump) = Pubkey::find_program_address(&[BONDING_CURVE, binding.as_ref()], ctx.program_id);
+    let vault_seeds = &[BONDING_CURVE, binding.as_ref(), &[bump]];
     let signer = &[&vault_seeds[..]];
 
     
-    invoke_signed(
-        &system_instruction::transfer(&accts.vault.key(), &accts.owner_wallet.key(), accts.bonding_curve.real_sol_reserves),
-        &[
-            accts.vault.to_account_info().clone(),
-            accts.owner_wallet.to_account_info().clone(),
-            accts.system_program.to_account_info().clone(),
-        ],
-        signer,
+    let cpi_ctx = CpiContext::new(
+        accts.token_program.to_account_info(),
+        Transfer {
+            from: accts.associated_bonding_curve.to_account_info().clone(),
+            to: accts.associated_user.to_account_info().clone(),
+            authority: accts.bonding_curve.to_account_info().clone(),
+        },
+    );
+    transfer(
+        cpi_ctx.with_signer(signer),
+        (accts.bonding_curve.token_total_supply - accts.bonding_curve.token_reserves) as u64,
     )?;
 
-    let (_, bump) = Pubkey::find_program_address(&[BONDING_CURVE, binding.as_ref()], ctx.program_id);
-    let vault_seeds = &[BONDING_CURVE, binding.as_ref(), &[bump]];
+
+    let binding = accts.f44_mint.key();
+
+    let (_, bump) = Pubkey::find_program_address(&[F44_VAULT_SEED, binding.as_ref()], ctx.program_id);
+    let vault_seeds = &[F44_VAULT_SEED, binding.as_ref(), &[bump]];
     let signer = &[&vault_seeds[..]];
 
     let cpi_ctx = CpiContext::new(
@@ -91,7 +100,7 @@ pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
     );
     transfer(
         cpi_ctx.with_signer(signer),
-        accts.bonding_curve.real_token_reserves,
+        accts.global.f44_supply / 100,
     )?;
 
     Ok(())

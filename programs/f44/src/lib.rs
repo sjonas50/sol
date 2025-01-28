@@ -54,8 +54,7 @@ pub mod f44 {
         instructions::sell(ctx, amount, min_f44_output)
     }
 
-    // pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
-    //     instructions::withdraw(ctx)
-    // }
-    
+    pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
+        instructions::withdraw(ctx)
+    }
 }
