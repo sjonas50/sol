@@ -10,8 +10,6 @@ use crate::{
     error::*,
     events::*,
 };
-use solana_program::{program::invoke, system_instruction};
-
 #[derive(Accounts)]
 pub struct Create<'info> {
     #[account(mut)]
@@ -91,7 +89,7 @@ pub struct Deposit<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-pub fn create(ctx: Context<Create>, initial_price: u64, curve_slope: u64, amount: u64) -> Result<()> {
+pub fn create(ctx: Context<Create>, initial_price: f64, curve_slope: f64, amount: u64) -> Result<()> {
     let accts = ctx.accounts;
     let decimals = accts.mint.decimals;
     let f44_decimals = accts.f44_mint.decimals;
@@ -134,9 +132,9 @@ pub fn create(ctx: Context<Create>, initial_price: u64, curve_slope: u64, amount
     // init the bonding curve
     accts.bonding_curve.initial_price = initial_price;
     accts.bonding_curve.curve_slope = curve_slope;
-    accts.bonding_curve.token_reserves = 0;
-    accts.bonding_curve.token_total_supply = amount;
-    accts.bonding_curve.mcap_limit = 100000;
+    accts.bonding_curve.token_reserves = 0.0;
+    accts.bonding_curve.token_total_supply = (amount / 10_u64.pow(decimals.into())) as f64;
+    accts.bonding_curve.mcap_limit = 100000.0;
     accts.bonding_curve.complete = false;
     accts.bonding_curve.token_mint = accts.mint.key();
 

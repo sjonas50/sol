@@ -11,8 +11,8 @@ pub enum F44Code {
     #[msg("The program is already initialized.")]
     AlreadyInitialized,
 
-    #[msg("slippage: Too much SOL required to buy the given amount of tokens.")]
-    TooMuchSolRequired,
+    #[msg("slippage: Too much F44 Token required to buy the given amount of tokens.")]
+    TooMuchF44Required,
 
     #[msg("slippage: Too little SOL received to sell the given amount of tokens.")]
     TooLittleSolReceived,

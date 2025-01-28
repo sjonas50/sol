@@ -16,11 +16,11 @@ pub struct Global {
 
 #[account]
 pub struct BondingCurve {
-    pub initial_price: u64,
-    pub curve_slope: u64,
-    pub token_reserves: u64,
-    pub token_total_supply: u64,
+    pub initial_price: f64,
+    pub curve_slope: f64,
+    pub token_reserves: f64,
+    pub token_total_supply: f64,
     pub token_mint: Pubkey,
-    pub mcap_limit: u64,
+    pub mcap_limit: f64,
     pub complete: bool,
 }

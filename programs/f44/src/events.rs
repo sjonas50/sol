@@ -10,13 +10,12 @@ pub struct CreateEvent {
 #[event]
 pub struct TradeEvent {
     pub mint: Pubkey,
-    pub sol_amount: u64,
-    pub token_amount: u64,
+    pub amount: u64,
+    pub token_amount: f64,
     pub is_buy: bool,
     pub user: Pubkey,
     pub timestamp: i64,
-    pub virtual_sol_reserves: u64,
-    pub virtual_token_reserves: u64
+    pub token_reserves: f64
 }
 
 #[event]

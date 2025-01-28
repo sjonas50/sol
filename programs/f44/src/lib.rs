@@ -42,13 +42,13 @@ pub mod f44 {
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
         instructions::deposit(ctx, amount)
     }
-    pub fn create(ctx: Context<Create>, initial_price: u64, curve_slope: u64, amount: u64) -> Result<()> {
+    pub fn create(ctx: Context<Create>, initial_price: f64, curve_slope: f64, amount: u64) -> Result<()> {
         instructions::create(ctx,initial_price, curve_slope, amount)
     }
 
-    // pub fn buy(ctx: Context<Buy>, amount: u64, max_sol_cost: u64) -> Result<()> {
-    //     instructions::buy(ctx, amount, max_sol_cost)
-    // }
+    pub fn buy(ctx: Context<Buy>, amount: u64, max_sol_cost: u64) -> Result<()> {
+        instructions::buy(ctx, amount, max_sol_cost)
+    }
 
     // pub fn sell(ctx: Context<Sell>, amount: u64, min_sol_output: u64) -> Result<()> {
     //     instructions::sell(ctx, amount, min_sol_output)
