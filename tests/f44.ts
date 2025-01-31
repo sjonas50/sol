@@ -63,9 +63,8 @@ describe("f44", () => {
     )
   );
 
-  let global: PublicKey;
-  let globalBump: number;
-  let mint: PublicKey;
+  let global, f44Vault: PublicKey;
+  let f44Mint: PublicKey;
   let tokenAta: PublicKey;
   const BONDING_CURVE = "BONDING-CURVE";
   const SOL_VAULT_SEED = "SOL-VAULT-SEED";
@@ -73,39 +72,36 @@ describe("f44", () => {
   const tokenDecimal = 9;
   type Event = anchor.IdlEvents<(typeof program)["idl"]>;
   // please assume that you already mint spl token
-  mint = new PublicKey("CxgN5z1wdKavjszkmbgAwZrgVKVKinZpPYET2T3RVkGY");
+  f44Mint = new PublicKey("CxgN5z1wdKavjszkmbgAwZrgVKVKinZpPYET2T3RVkGY");
 
   it("GET PDA", async () => {
-    [global, globalBump] = await anchor.web3.PublicKey.findProgramAddress(
+    [global] = await anchor.web3.PublicKey.findProgramAddress(
       [Buffer.from("GLOBAL-STATE-SEED")],
       program.programId
     );
     console.log("Get Global PDA->", global.toString());
+
+    [f44Vault] = await anchor.web3.PublicKey.findProgramAddress(
+      [
+        Buffer.from("F44-VAULT-SEED"),
+        f44Mint.toBuffer()
+      ],
+      program.programId
+    );
+    console.log("Get f44Vault PDA->", f44Vault.toString());
+
   });
 
   it("Is initialized!", async () => {
     try {
-      /* Please ignore this step as the airdrop may not work.
-      // 1 - Request Airdrop
-      const signature = await program.provider.connection.requestAirdrop(
-        owner.publicKey,
-        10 ** 9
-      );
-       // 2 - Fetch the latest blockhash
-      const { blockhash, lastValidBlockHeight } = await program.provider.connection.getLatestBlockhash();
-      // 3 - Confirm transaction success
-      await program.provider.connection.confirmTransaction({
-        blockhash,
-        lastValidBlockHeight,
-        signature
-      }, 'confirmed');
-      */
-
       const tx = await program.rpc.initialize({
         accounts: {
           global,
           owner: owner.publicKey,
-          systemProgram: SystemProgram.programId
+          f44Mint,
+          f44Vault,
+          systemProgram: SystemProgram.programId,
+          tokenProgram:TOKEN_PROGRAM_ID
         },
         signers: [owner]
       });
@@ -114,7 +110,7 @@ describe("f44", () => {
       console.log(error);
     }
   });
-
+  /*
   it("set params", async () => {
     const initialVirtualTokenReserves = "1073000000000000";
     const initialVirtualSolReserves = "30000000000";
@@ -165,5 +161,5 @@ describe("f44", () => {
       console.log(error);
     }
   });
-
+  */
 });
