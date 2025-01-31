@@ -110,7 +110,6 @@ describe("f44", () => {
       console.log(error);
     }
   });
-  */
   it("set params", async () => {
     // const agentAmount = 1000000000;
     const agentAmount = 10000000; // This value is only for testing. Please use the above value in product
@@ -154,4 +153,31 @@ describe("f44", () => {
       console.log(error);
     }
   });
+  */
+  it("Deposit F44 tokens to the vault PDA controlled by the contract", async() => {
+    try {
+      const amount = 10000000 * (10 ** 6);
+      const associatedOwnerAccount = await getAssociatedTokenAddress(
+        f44Mint,
+        owner.publicKey
+      );
+
+      const tx = await program.rpc.deposit(
+        new anchor.BN(amount), {
+          accounts: {
+            global,
+            owner: owner.publicKey,
+            f44Mint,f44Vault,
+            associatedOwnerAccount,
+            systemProgram: SystemProgram.programId,
+            tokenProgram: TOKEN_PROGRAM_ID
+          },
+          signers: [owner]
+        }
+      );
+      console.log("Transaction was success and hash is ", tx);
+    } catch (error) {
+      console.log(error);
+    }
+  })
 });
