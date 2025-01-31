@@ -107,7 +107,6 @@ describe("f44", () => {
       program.programId
     );
   });
-  /*
   it("Is initialized!", async () => {
     try {
       const tx = await program.rpc.initialize({
@@ -128,7 +127,7 @@ describe("f44", () => {
   });
   it("set params", async () => {
     // const agentAmount = 1000000000;
-    const agentAmount = 1000000; // This value is only for testing. Please use the above value in product
+    const agentAmount = 100000; // This value is only for testing. Please use the above value in product
 
     const ownerWallet = new PublicKey(
       "2vKHp96ccuX6pP55o8mzCfRS7rD5Lz3gDWGQMwHjdEpF"
@@ -195,7 +194,6 @@ describe("f44", () => {
       console.log(error);
     }
   });
-  */
   it("Create the pool", async() => {
     try {
       const initialPrice = 0.01;
@@ -241,7 +239,7 @@ describe("f44", () => {
   it("Buy agent Token with F44 token", async() => {
     try {
       const f44Amount = 10;
-      const amount = await calculateF44Cost(f44Amount);
+      const amount = await calculateBuyF44Cost(f44Amount);
       console.log("The agent token amount that we can buy with f44 Amount is ", amount);
       const slippage = 1; //1%
       const maxF44Amount = f44Amount * (100 + slippage) / 100 * 10 ** 6;
@@ -280,8 +278,82 @@ describe("f44", () => {
       console.log(error);
     }
   });
+  it("Sell agent token", async() => {
+    try {
+      const tokenAmount = 700;
+      const amount = await calculateF44SellCost(tokenAmount);
+      console.log("The agent token amount that we can buy with f44 Amount is ", amount);
+      const slippage = 1; //1%
+      const minF44Amount = amount * (100 - slippage) / 100 * 10 ** 6;
 
-  async function calculateF44Cost(f44Amount: number) {
+      const associatedUser = await getAssociatedTokenAddress(
+        agentMint,
+        buyer.publicKey
+      );
+      const associatedUserF44Account = await getAssociatedTokenAddress(
+        f44Mint,
+        buyer.publicKey
+      );
+
+      const tx = await program.rpc.sell(
+        new anchor.BN(parseInt((tokenAmount * 10 ** 6).toString())),
+        new anchor.BN(parseInt(minF44Amount.toString())), {
+          accounts: {
+            global,
+            mint: agentMint,
+            bondingCurve,
+            associatedBondingCurve,
+            associatedUser,
+            f44Mint,
+            f44Vault,
+            associatedUserF44Account,
+            user: buyer.publicKey,
+            systemProgram: SystemProgram.programId,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            clock: SYSVAR_CLOCK_PUBKEY
+          },
+          signers: [buyer]
+        }
+      );
+      console.log("Sell tx hash is ", tx);
+    } catch (error) {
+      console.log(error);
+    }
+  });
+  it("Withdraw agent token and f44 tokens", async() => {
+    try {
+      const associatedUser = await getAssociatedTokenAddress(
+        agentMint,
+        owner.publicKey
+      );
+      const associatedUserF44Account = await getAssociatedTokenAddress(
+        f44Mint,
+        owner.publicKey
+      );
+      const tx = await program.rpc.withdraw({
+        accounts: {
+          global,
+          mint: agentMint,
+          bondingCurve,
+          associatedBondingCurve,
+          associatedUser,
+          f44Mint,
+          f44Vault,
+          associatedUserF44Account,
+          ownerWallet: owner.publicKey,
+          systemProgram: SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID
+        },
+        signers: [owner]
+      })
+    } catch (error) {
+      console.log(error);
+    }
+  })
+
+  async function calculateBuyF44Cost(f44Amount: number) {
     try {
       const bondingCurveData = await program.account.bondingCurve.fetch(bondingCurve);
       console.log("bondingCurveData->", bondingCurveData);
@@ -298,4 +370,25 @@ describe("f44", () => {
       console.log(error);
     }
   }
+
+  async function calculateF44SellCost(tokenAmount: number) {
+    try {
+      const bondingCurveData = await program.account.bondingCurve.fetch(bondingCurve);
+      console.log("bondingCurveData->", bondingCurveData);
+      const initialPrice = parseFloat(bondingCurveData.initialPrice.toString());
+      const curveSlope = parseFloat(bondingCurveData.curveSlope.toString());
+      const tokenReserves = parseFloat(bondingCurveData.tokenReserves.toString());
+    
+      let firstPrice = initialPrice + curveSlope * tokenReserves;
+      let lastPrice = initialPrice + curveSlope * (tokenReserves - tokenAmount);
+      console.log("average price is ", (firstPrice + lastPrice ) / 2 );
+      let x = (firstPrice + lastPrice) / 2 * tokenAmount;
+      console.log("Sell F44 amount is ", x );
+
+      return x;
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
 });

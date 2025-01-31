@@ -1,5 +1,8 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint,Token,TokenAccount,Transfer, transfer};
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token::{Mint,Burn,Token,TokenAccount,Transfer, burn, transfer}
+};
 
 use crate::{
     state::{Global, BondingCurve},
@@ -11,6 +14,7 @@ use crate::{
 #[derive(Accounts)]
 pub struct Sell<'info> {
     #[account(
+        mut,
         seeds = [GLOBAL_STATE_SEED],
         bump
     )]
@@ -35,11 +39,12 @@ pub struct Sell<'info> {
 
     #[account(
         mut,
-        token::mint = mint,
-        token::authority = user
+        associated_token::mint = mint,
+        associated_token::authority = user
     )]
     pub associated_user: Box<Account<'info, TokenAccount>>,
 
+    #[account(mut)]
     pub f44_mint: Box<Account<'info, Mint>>,
 
     #[account(
@@ -49,36 +54,42 @@ pub struct Sell<'info> {
     )]
     pub f44_vault: Box<Account<'info, TokenAccount>>,
 
-    #[account(mut)]
+    #[account(
+        init_if_needed,
+        payer = user,
+        associated_token::mint = f44_mint,
+        associated_token::authority = user
+    )]
     pub associated_user_f44_account: Box<Account<'info, TokenAccount>>,
     
     #[account(mut)]
     pub user: Signer<'info>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub clock: Sysvar<'info, Clock>,
 }
 
 pub fn sell(ctx: Context<Sell>, amount: u64, min_f44_output: u64) -> Result<()> {
     let accts = ctx.accounts;
+    let bonding_curve = &accts.bonding_curve;
+    let decimals = accts.mint.decimals;
+    let f44_decimals = accts.f44_mint.decimals;
+
     require!(accts.bonding_curve.complete == false, F44Code::BondingCurveComplete);
     require!(amount >0 , F44Code::ZeroAmount);
-    require!(accts.bonding_curve.token_reserves >= amount as f64, F44Code::NotEnoughAmount);
-
-    let bonding_curve = &accts.bonding_curve;
-
+    require!(accts.bonding_curve.token_reserves >= amount as f64 / 10_u64.pow(decimals.into()) as f64, F44Code::NotEnoughAmount);
+    
     // Calculate the required SOL cost for the given token amount
-    let f44_amount = calculate_f44_cost(bonding_curve, amount as f64)?;
+    let f44_amount = calculate_f44_cost(bonding_curve, amount as f64 / 10_u64.pow(decimals.into()) as f64)?;
 
     // Ensure the SOL cost does not exceed max_sol_cost
-    require!(f44_amount >= min_f44_output as f64, F44Code::TooLittleF44Received);
+    require!(f44_amount * 10_u64.pow(f44_decimals.into()) as f64 >= min_f44_output as f64, F44Code::TooLittleF44Received);
 
     // send f44 token from pool reserve to user
-    let binding = accts.f44_mint.key();
-
-    let (_, bump) = Pubkey::find_program_address(&[F44_VAULT_SEED, binding.as_ref()], ctx.program_id);
-    let vault_seeds = &[F44_VAULT_SEED, binding.as_ref(), &[bump]];
-    let signer = &[&vault_seeds[..]];
+    let (_, bump) =  Pubkey::find_program_address(&[GLOBAL_STATE_SEED], ctx.program_id);
+    let global_seeds = &[GLOBAL_STATE_SEED, &[bump]];
+    let signer = &[&global_seeds[..]];
 
     let cpi_ctx = CpiContext::new(
         accts.token_program.to_account_info(),
@@ -90,24 +101,25 @@ pub fn sell(ctx: Context<Sell>, amount: u64, min_f44_output: u64) -> Result<()> 
     );
     transfer(
         cpi_ctx.with_signer(signer),
-        f44_amount as u64,
+        (f44_amount * 10_u64.pow(f44_decimals.into()) as f64) as u64,
     )?;
-    accts.global.f44_supply -= f44_amount as u64;
+    accts.global.f44_supply -= (f44_amount * 10_u64.pow(f44_decimals.into()) as f64) as u64;
 
     // send tokens to the vault
     let cpi_ctx = CpiContext::new(
         accts.token_program.to_account_info(),
-        Transfer {
+        Burn {
+            mint: accts.mint.to_account_info().clone(),
             from: accts.associated_user.to_account_info().clone(),
-            to: accts.associated_bonding_curve.to_account_info().clone(),
             authority: accts.user.to_account_info().clone(),
         },
     );
-    transfer(cpi_ctx, amount)?;
+    burn(cpi_ctx, amount)?;
+    // burn agent tokens
 
     //  update the bonding curve
     let decimals = accts.mint.decimals;
-    accts.bonding_curve.token_reserves -= (amount / 10_u64.pow(decimals.into())) as f64;
+    accts.bonding_curve.token_reserves -= amount as f64 / 10_u64.pow(decimals.into()) as f64;
 
     // Log the TradeEvent details
 

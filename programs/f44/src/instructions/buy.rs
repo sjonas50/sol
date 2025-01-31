@@ -15,6 +15,7 @@ use crate::{
 #[derive(Accounts)]
 pub struct Buy<'info> {
     #[account(
+        mut,
         seeds = [GLOBAL_STATE_SEED],
         bump
     )]
@@ -44,7 +45,8 @@ pub struct Buy<'info> {
         associated_token::authority = user
     )]
     pub associated_user: Box<Account<'info, TokenAccount>>,
-
+    
+    #[account(mut)]
     pub f44_mint: Box<Account<'info, Mint>>,
 
     #[account(
@@ -80,7 +82,7 @@ pub fn buy(ctx: Context<Buy>, amount: u64, max_f44_amount: u64) -> Result<()> {
     let f44_amount = calculate_f44_cost(bonding_curve, amount as f64 / 10_u64.pow(decimals.into()) as f64)?;
 
     // Ensure the F44 Amount does not exceed max_f44_cost
-    require!(f44_amount as u64 * 10_u64.pow(f44_decimals.into()) <= max_f44_amount, F44Code::TooMuchF44Required);
+    require!(f44_amount * 10_u64.pow(f44_decimals.into()) as f64 <= max_f44_amount as f64, F44Code::TooMuchF44Required);
 
     // send f44 token to the f44 reserve pool
     let cpi_ctx = CpiContext::new(
@@ -91,9 +93,9 @@ pub fn buy(ctx: Context<Buy>, amount: u64, max_f44_amount: u64) -> Result<()> {
             authority: accts.user.to_account_info().clone(),
         },
     );
-    transfer(cpi_ctx, f44_amount as u64 * 10_u64.pow(f44_decimals.into()))?;
+    transfer(cpi_ctx, (f44_amount * 10_u64.pow(f44_decimals.into()) as f64) as u64)?;
 
-    accts.global.f44_supply += f44_amount as u64;
+    accts.global.f44_supply += (f44_amount * 10_u64.pow(f44_decimals.into()) as f64) as u64;
    
     // send token from agent token vault account to user
     let binding = accts.mint.key();
@@ -116,7 +118,7 @@ pub fn buy(ctx: Context<Buy>, amount: u64, max_f44_amount: u64) -> Result<()> {
     )?;
 
     //  update the bonding curve
-    accts.bonding_curve.token_reserves += (amount / 10_u64.pow(decimals.into())) as f64;
+    accts.bonding_curve.token_reserves += amount as f64 / 10_u64.pow(decimals.into()) as f64;
 
     let macp = (accts.bonding_curve.curve_slope as f64 * accts.bonding_curve.token_reserves as f64 + accts.bonding_curve.initial_price) * accts.bonding_curve.token_total_supply;
     msg!("Current market cap is {}", macp);
