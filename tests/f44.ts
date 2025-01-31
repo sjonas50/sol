@@ -91,7 +91,7 @@ describe("f44", () => {
     console.log("Get f44Vault PDA->", f44Vault.toString());
 
   });
-
+  /*
   it("Is initialized!", async () => {
     try {
       const tx = await program.rpc.initialize({
@@ -110,29 +110,23 @@ describe("f44", () => {
       console.log(error);
     }
   });
-  /*
+  */
   it("set params", async () => {
-    const initialVirtualTokenReserves = "1073000000000000";
-    const initialVirtualSolReserves = "30000000000";
-    const initialRealTokenReserves = "793100000000000";
-    const tokenTotalSupply = "1000000000000000";
-    const feeBasisPoints = 100; // 1% for buy & sell
-    const mcap = "300000000000";
+    // const agentAmount = 1000000000;
+    const agentAmount = 10000000; // This value is only for testing. Please use the above value in product
+
     const ownerWallet = new PublicKey(
       "2vKHp96ccuX6pP55o8mzCfRS7rD5Lz3gDWGQMwHjdEpF"
     );
-    const createFee = 6900000; // 1sol (1sol = 10 ** 9 lamports) 0.0069 $1
+    const feeAmount = 1000; // The user should pay 1,000 F44 token when create the pool
+    const createFee = 1000; // It is the same as feeAmount and it will be deleted in smart contract later cause we won't use that variable :(
 
     try {
       const tx = await program.rpc.setParams(
         feeRecipient,
         ownerWallet,
-        new anchor.BN(initialVirtualTokenReserves),
-        new anchor.BN(initialVirtualSolReserves),
-        new anchor.BN(initialRealTokenReserves),
-        new anchor.BN(tokenTotalSupply),
-        new anchor.BN(mcap),
-        new anchor.BN(feeBasisPoints),
+        new anchor.BN(agentAmount),
+        new anchor.BN(feeAmount),
         new anchor.BN(createFee),
         {
           accounts: {
@@ -148,18 +142,16 @@ describe("f44", () => {
         authority: globalData.authority.toBase58(),
         feeRecipient: globalData.feeRecipient.toBase58(),
         ownerWallet: globalData.ownerWallet.toBase58(),
-        initialVirtualTokenReserves: parseInt(globalData.initialVirtualTokenReserves.toString()),
-        initialVirtualSolReserves: parseInt(globalData.initialVirtualSolReserves.toString()),
-        initialRealTokenReserves: parseInt(globalData.initialRealTokenReserves.toString()),
-        tokenTotalSupply: parseInt(globalData.tokenTotalSupply.toString()),
-        feeBasisPoints: parseInt(globalData.feeBasisPoints.toString()),
-        mcapLimit: parseInt(globalData.mcapLimit.toString()),
-        createFee: parseInt(globalData.createFee.toString()),
+        f44Mint: globalData.f44Mint.toBase58(),
+        f44Vault: globalData.f44Vault.toBase58(),
+        f44Supply: parseInt(globalData.f44Supply.toString()),
+        feeAmount: parseInt(globalData.feeAmount.toString()),
+        agentAmount: parseInt(globalData.agentAmount.toString()),
+        createFee: parseInt(globalData.createFee.toString())
       });
       console.log("tx->", tx);
     } catch (error) {
       console.log(error);
     }
   });
-  */
 });

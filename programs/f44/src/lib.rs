@@ -25,7 +25,7 @@ pub mod f44 {
         ctx: Context<SetParams>,
         fee_recipient: Pubkey,
         owner_wallet: Pubkey,
-        mcap_limit: u64,
+        agent_amount: u64,
         fee_amount: u64,
         create_fee: u64,
     ) -> Result<()> {
@@ -33,7 +33,7 @@ pub mod f44 {
             ctx,
             fee_recipient,
             owner_wallet,
-            mcap_limit,
+            agent_amount,
             fee_amount,
             create_fee,
         )
