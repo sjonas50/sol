@@ -63,8 +63,8 @@ describe("f44", () => {
     )
   );
 
-  let global, f44Vault: PublicKey;
-  let f44Mint: PublicKey;
+  let global, f44Vault, bondingCurve, associatedBondingCurve: PublicKey;
+  let f44Mint, agentMint: PublicKey;
   let tokenAta: PublicKey;
   const BONDING_CURVE = "BONDING-CURVE";
   const SOL_VAULT_SEED = "SOL-VAULT-SEED";
@@ -73,6 +73,7 @@ describe("f44", () => {
   type Event = anchor.IdlEvents<(typeof program)["idl"]>;
   // please assume that you already mint spl token
   f44Mint = new PublicKey("CxgN5z1wdKavjszkmbgAwZrgVKVKinZpPYET2T3RVkGY");
+  agentMint = new PublicKey("7XJMQgzNco7g58Fk6iEasf5SzEtgP9Rh63fDHHp2bPyV");
 
   it("GET PDA", async () => {
     [global] = await anchor.web3.PublicKey.findProgramAddress(
@@ -90,6 +91,21 @@ describe("f44", () => {
     );
     console.log("Get f44Vault PDA->", f44Vault.toString());
 
+    [bondingCurve] = await anchor.web3.PublicKey.findProgramAddress(
+      [
+        Buffer.from("BONDING-CURVE"),
+        agentMint.toBuffer()
+      ],
+      program.programId
+    );
+
+    [associatedBondingCurve] = await anchor.web3.PublicKey.findProgramAddress(
+      [
+        Buffer.from("VAULT-SEED"),
+        agentMint.toBuffer()
+      ],
+      program.programId
+    );
   });
   /*
   it("Is initialized!", async () => {
@@ -153,7 +169,6 @@ describe("f44", () => {
       console.log(error);
     }
   });
-  */
   it("Deposit F44 tokens to the vault PDA controlled by the contract", async() => {
     try {
       const amount = 10000000 * (10 ** 6);
@@ -176,6 +191,49 @@ describe("f44", () => {
         }
       );
       console.log("Transaction was success and hash is ", tx);
+    } catch (error) {
+      console.log(error);
+    }
+  });
+  */
+  it("Create the pool", async() => {
+    try {
+      const initialPrice = 0.01;
+      const curveSlope = 0.00001;
+      const globalData = await program.account.global.fetch(global);
+      const amount = Number(globalData.agentAmount) * (10 ** 6);
+      console.log(`Deposit amount is ${Number(globalData.agentAmount)} and decimals is 6 So amount param is ${amount}`);
+      const associatedUserAccount = await getAssociatedTokenAddress(
+        agentMint,
+        user.publicKey
+      );
+      const associatedUserF44Account = await getAssociatedTokenAddress(
+        f44Mint,
+        user.publicKey
+      );
+
+      const tx = await program.rpc.create(
+        initialPrice,
+        curveSlope,
+        new anchor.BN(amount), {
+          accounts: {
+            user: user.publicKey,
+            mint: agentMint,
+            bondingCurve,
+            associatedBondingCurve,
+            associatedUserAccount,
+            f44Mint,
+            f44Vault,
+            associatedUserF44Account,
+            global,
+            systemProgram: SystemProgram.programId,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID
+          },
+          signers: [user]
+        }
+      );
+      console.log("Create Pool tx hash is ", tx);
     } catch (error) {
       console.log(error);
     }

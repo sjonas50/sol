@@ -123,11 +123,11 @@ pub fn create(ctx: Context<Create>, initial_price: f64, curve_slope: f64, amount
             authority: accts.user.to_account_info().clone(),
         },
     );
-    transfer(cpi_fee_ctx, accts.global.fee_amount)?;
+    transfer(cpi_fee_ctx, accts.global.fee_amount * 10_u64.pow(f44_decimals.into()))?;
     msg!(
         "transfer f44 tokens from user to bonding reserve pool as fee - F44: {}, amount: {}",
         accts.f44_mint.key(),
-        accts.global.fee_amount / 10_u64.pow(f44_decimals.into()),
+        accts.global.fee_amount * 10_u64.pow(f44_decimals.into()),
     );
     // init the bonding curve
     accts.bonding_curve.initial_price = initial_price;
