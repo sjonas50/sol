@@ -11,7 +11,7 @@ use instructions::*;
 pub use state::*;
 pub use events::*;
 
-declare_id!("22ugTc9voq6eojXTNjV3i3QsD97h487pAyyJ7TsK3MVJ");
+declare_id!("5ihGR9XccmcrR85G15Z5aGrjaxyd7p1196D2YRVqVN86");
 
 #[program]
 pub mod f44 {

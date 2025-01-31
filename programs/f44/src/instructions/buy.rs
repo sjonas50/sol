@@ -1,6 +1,9 @@
 use anchor_lang::prelude::*;
 
-use anchor_spl::token::{Mint,Token,TokenAccount,Transfer, transfer};
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token::{Mint,Token,TokenAccount,Transfer, transfer}
+};
 
 use crate::{
     constants::{GLOBAL_STATE_SEED, BONDING_CURVE, F44_VAULT_SEED}, 
@@ -35,7 +38,8 @@ pub struct Buy<'info> {
     pub associated_bonding_curve: Box<Account<'info, TokenAccount>>,
 
     #[account(
-        mut,
+        init_if_needed,
+        payer = user,
         associated_token::mint = mint,
         associated_token::authority = user
     )]
@@ -57,6 +61,7 @@ pub struct Buy<'info> {
     pub user: Signer<'info>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub clock:  Sysvar<'info, Clock>,
 }
 // amount is the agent token amount
@@ -68,12 +73,14 @@ pub fn buy(ctx: Context<Buy>, amount: u64, max_f44_amount: u64) -> Result<()> {
     require!(accts.bonding_curve.complete == false, F44Code::BondingCurveComplete);
 
     let bonding_curve = &accts.bonding_curve;
+    let decimals = accts.mint.decimals;
+    let f44_decimals = accts.f44_mint.decimals;
 
     // Calculate the required SOL cost for the given token amount
-    let f44_amount = calculate_f44_cost(bonding_curve, amount as f64)?;
+    let f44_amount = calculate_f44_cost(bonding_curve, amount as f64 / 10_u64.pow(decimals.into()) as f64)?;
 
     // Ensure the F44 Amount does not exceed max_f44_cost
-    require!(f44_amount <= max_f44_amount as f64, F44Code::TooMuchF44Required);
+    require!(f44_amount as u64 * 10_u64.pow(f44_decimals.into()) <= max_f44_amount, F44Code::TooMuchF44Required);
 
     // send f44 token to the f44 reserve pool
     let cpi_ctx = CpiContext::new(
@@ -84,7 +91,7 @@ pub fn buy(ctx: Context<Buy>, amount: u64, max_f44_amount: u64) -> Result<()> {
             authority: accts.user.to_account_info().clone(),
         },
     );
-    transfer(cpi_ctx, f44_amount as u64)?;
+    transfer(cpi_ctx, f44_amount as u64 * 10_u64.pow(f44_decimals.into()))?;
 
     accts.global.f44_supply += f44_amount as u64;
    
@@ -109,7 +116,6 @@ pub fn buy(ctx: Context<Buy>, amount: u64, max_f44_amount: u64) -> Result<()> {
     )?;
 
     //  update the bonding curve
-    let decimals = accts.mint.decimals;
     accts.bonding_curve.token_reserves += (amount / 10_u64.pow(decimals.into())) as f64;
 
     let macp = (accts.bonding_curve.curve_slope as f64 * accts.bonding_curve.token_reserves as f64 + accts.bonding_curve.initial_price) * accts.bonding_curve.token_total_supply;

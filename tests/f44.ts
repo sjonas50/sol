@@ -128,7 +128,7 @@ describe("f44", () => {
   });
   it("set params", async () => {
     // const agentAmount = 1000000000;
-    const agentAmount = 10000000; // This value is only for testing. Please use the above value in product
+    const agentAmount = 1000000; // This value is only for testing. Please use the above value in product
 
     const ownerWallet = new PublicKey(
       "2vKHp96ccuX6pP55o8mzCfRS7rD5Lz3gDWGQMwHjdEpF"
@@ -171,7 +171,7 @@ describe("f44", () => {
   });
   it("Deposit F44 tokens to the vault PDA controlled by the contract", async() => {
     try {
-      const amount = 10000000 * (10 ** 6);
+      const amount = 1000000 * (10 ** 6);
       const associatedOwnerAccount = await getAssociatedTokenAddress(
         f44Mint,
         owner.publicKey
@@ -237,5 +237,65 @@ describe("f44", () => {
     } catch (error) {
       console.log(error);
     }
-  })
+  });
+  it("Buy agent Token with F44 token", async() => {
+    try {
+      const f44Amount = 10;
+      const amount = await calculateF44Cost(f44Amount);
+      console.log("The agent token amount that we can buy with f44 Amount is ", amount);
+      const slippage = 1; //1%
+      const maxF44Amount = f44Amount * (100 + slippage) / 100 * 10 ** 6;
+      console.log("max f44 amount is ", maxF44Amount);
+      const associatedUser = await getAssociatedTokenAddress(
+        agentMint,
+        buyer.publicKey
+      );
+      const associatedUserF44Account = await getAssociatedTokenAddress(
+        f44Mint,
+        buyer.publicKey
+      );
+
+      const tx = await program.rpc.buy(
+        new anchor.BN(parseInt((amount * 10 ** 6).toString())),
+        new anchor.BN(parseInt(maxF44Amount.toString())), {
+          accounts: {
+            global,
+            mint: agentMint,
+            bondingCurve,
+            associatedBondingCurve,
+            associatedUser,
+            f44Mint,
+            f44Vault,associatedUserF44Account,
+            user: buyer.publicKey,
+            systemProgram: SystemProgram.programId,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            clock: SYSVAR_CLOCK_PUBKEY
+          },
+          signers: [buyer]
+        }
+      );
+      console.log("Buy tx hash is ", tx);
+    } catch (error) {
+      console.log(error);
+    }
+  });
+
+  async function calculateF44Cost(f44Amount: number) {
+    try {
+      const bondingCurveData = await program.account.bondingCurve.fetch(bondingCurve);
+      console.log("bondingCurveData->", bondingCurveData);
+      const initialPrice = parseFloat(bondingCurveData.initialPrice.toString());
+      const curveSlope = parseFloat(bondingCurveData.curveSlope.toString());
+      const tokenReserves = parseFloat(bondingCurveData.tokenReserves.toString());
+      const A = curveSlope / 2;
+      const B = curveSlope * tokenReserves + initialPrice;
+      const C = -f44Amount;
+
+      const x = (-B + Math.sqrt(Math.pow(B,2) - 4 * A * C)) / (2 * A);
+      return x;
+    } catch (error) {
+      console.log(error);
+    }
+  }
 });
