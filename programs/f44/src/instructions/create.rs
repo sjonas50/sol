@@ -1,7 +1,8 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::msg;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token::{Mint,Token,TokenAccount, Transfer, transfer}
+    token::{self, transfer, Mint, Token, TokenAccount, Transfer}
 };
 use std::mem::size_of;
 use crate::{
@@ -18,7 +19,7 @@ pub struct Create<'info> {
     pub mint: Box<Account<'info, Mint>>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = user,
         seeds = [BONDING_CURVE, mint.key().as_ref()],
         bump,
@@ -131,6 +132,8 @@ pub fn create(ctx: Context<Create>, initial_price: f64, curve_slope: f64, amount
     );
     // init the bonding curve
     accts.bonding_curve.initial_price = initial_price;
+    accts.bonding_curve.current_price = initial_price;
+    accts.bonding_curve.current_mcap = 0.0;
     accts.bonding_curve.curve_slope = curve_slope;
     accts.bonding_curve.token_reserves = 0.0;
     accts.bonding_curve.token_total_supply = (amount / 10_u64.pow(decimals.into())) as f64;
@@ -140,17 +143,19 @@ pub fn create(ctx: Context<Create>, initial_price: f64, curve_slope: f64, amount
 
     // Log the event details
     msg!(
-        "CreateEvent - Mint: {}, BondingCurve: {}, User: {}",
+        "CreateEvent - Mint: {}, bondingCurve: {}, user: {}, initialPrice: {}",
         accts.mint.key(),
         accts.bonding_curve.key(),
-        accts.user.key()
+        accts.user.key(),
+        accts.bonding_curve.initial_price,
     );
     
     emit!{
         CreateEvent {
             mint: accts.mint.key(),
             bonding_curve: accts.bonding_curve.key(),
-            user: accts.user.key()
+            user: accts.user.key(),
+            initial_price: accts.bonding_curve.initial_price,
         }
     }
 
