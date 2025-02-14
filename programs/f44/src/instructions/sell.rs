@@ -1,14 +1,14 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token::{Mint,Burn,Token,TokenAccount,Transfer, burn, transfer}
+    token::{burn, transfer, Burn, Mint, Token, TokenAccount, Transfer},
 };
 
 use crate::{
-    state::{Global, BondingCurve},
-    constants::{GLOBAL_STATE_SEED, BONDING_CURVE, F44_VAULT_SEED},
+    constants::{BONDING_CURVE, F44_VAULT_SEED, GLOBAL_STATE_SEED},
     error::*,
     events::*,
+    state::{BondingCurve, Global},
 };
 
 #[derive(Accounts)]
@@ -61,7 +61,7 @@ pub struct Sell<'info> {
         associated_token::authority = user
     )]
     pub associated_user_f44_account: Box<Account<'info, TokenAccount>>,
-    
+
     #[account(mut)]
     pub user: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -76,18 +76,31 @@ pub fn sell(ctx: Context<Sell>, amount: u64, min_f44_output: u64) -> Result<()> 
     let decimals = accts.mint.decimals;
     let f44_decimals = accts.f44_mint.decimals;
 
-    require!(accts.bonding_curve.complete == false, F44Code::BondingCurveComplete);
-    require!(amount >0 , F44Code::ZeroAmount);
-    require!(accts.bonding_curve.token_reserves >= amount as f64 / 10_u64.pow(decimals.into()) as f64, F44Code::NotEnoughAmount);
-    
+    require!(
+        accts.bonding_curve.complete == false,
+        F44Code::BondingCurveComplete
+    );
+    require!(amount > 0, F44Code::ZeroAmount);
+    require!(
+        bonding_curve.token_reserves >= amount as f64 / 10_u64.pow(decimals.into()) as f64,
+        F44Code::NotEnoughAmount
+    );
+
     // Calculate the required SOL cost for the given token amount
-    let f44_amount = calculate_f44_cost(bonding_curve, amount as f64 / 10_u64.pow(decimals.into()) as f64)?;
+    let token_amount = amount as f64 / 10_u64.pow(decimals.into()) as f64;
+    let f44_amount = calculate_f44_cost(bonding_curve, token_amount)?;
+    accts.bonding_curve.current_price = bonding_curve.curve_slope
+        * (bonding_curve.token_reserves as f64 - token_amount)
+        + bonding_curve.initial_price;
 
     // Ensure the SOL cost does not exceed max_sol_cost
-    require!(f44_amount * 10_u64.pow(f44_decimals.into()) as f64 >= min_f44_output as f64, F44Code::TooLittleF44Received);
+    require!(
+        f44_amount * 10_u64.pow(f44_decimals.into()) as f64 >= min_f44_output as f64,
+        F44Code::TooLittleF44Received
+    );
 
     // send f44 token from pool reserve to user
-    let (_, bump) =  Pubkey::find_program_address(&[GLOBAL_STATE_SEED], ctx.program_id);
+    let (_, bump) = Pubkey::find_program_address(&[GLOBAL_STATE_SEED], ctx.program_id);
     let global_seeds = &[GLOBAL_STATE_SEED, &[bump]];
     let signer = &[&global_seeds[..]];
 
@@ -121,10 +134,16 @@ pub fn sell(ctx: Context<Sell>, amount: u64, min_f44_output: u64) -> Result<()> 
     let decimals = accts.mint.decimals;
     accts.bonding_curve.token_reserves -= amount as f64 / 10_u64.pow(decimals.into()) as f64;
 
+    // Calculate market cap
+    let macp = (accts.bonding_curve.curve_slope * accts.bonding_curve.token_reserves
+        + accts.bonding_curve.initial_price)
+        * accts.bonding_curve.token_total_supply;
+    accts.bonding_curve.current_mcap = macp;
+
     // Log the TradeEvent details
 
-     msg!(
-        "Trade // Type: Sell, User: {}, Mint: {}, BondingCurve: {}, Timestamp: {}, f44 Amount: {}, Amount: {}, IsBuy: {}, token_reserves: {}",
+    msg!(
+        "TradeEvent - type: Sell, user: {}, mint: {}, bondingCurve: {}, timestamp: {}, f44Amount: {}, amount: {}, isBuy: {}, tokenReserves: {}, currentPrice: {}, currentMcap: {}",
         accts.user.key(),
         accts.mint.key(),
         accts.bonding_curve.key(),
@@ -132,28 +151,37 @@ pub fn sell(ctx: Context<Sell>, amount: u64, min_f44_output: u64) -> Result<()> 
         f44_amount,
         amount,
         false,
-        accts.bonding_curve.token_reserves
+        accts.bonding_curve.token_reserves,
+        accts.bonding_curve.current_price,
+        accts.bonding_curve.current_mcap,
     );
 
-    emit!(
-        TradeEvent { 
-            mint: accts.mint.key(), 
-            amount: f44_amount as u64, 
-            token_amount: (amount / 10_u64.pow(decimals.into())) as f64,
-            is_buy: false, 
-            user: accts.user.key(), 
-            timestamp: accts.clock.unix_timestamp, 
-            token_reserves: accts.bonding_curve.token_reserves, 
-        }
-    );
+    emit!(TradeEvent {
+        mint: accts.mint.key(),
+        amount: f44_amount as u64,
+        token_amount: amount,
+        is_buy: false,
+        user: accts.user.key(),
+        timestamp: accts.clock.unix_timestamp,
+        token_reserves: accts.bonding_curve.token_reserves,
+        last_price: accts.bonding_curve.current_price,
+        current_mcap: accts.bonding_curve.current_mcap,
+    });
 
     Ok(())
 }
 
 fn calculate_f44_cost(bonding_curve: &Account<BondingCurve>, token_amount: f64) -> Result<f64> {
-    let first_price = bonding_curve.curve_slope * bonding_curve.token_reserves as f64 + bonding_curve.initial_price;
-    let last_price = bonding_curve.curve_slope * (bonding_curve.token_reserves as f64 - token_amount) + bonding_curve.initial_price;
-    msg!("The first price is {} and last price is {}", first_price.clone(), last_price.clone());
+    let first_price = bonding_curve.curve_slope * bonding_curve.token_reserves as f64
+        + bonding_curve.initial_price;
+    let last_price = bonding_curve.curve_slope
+        * (bonding_curve.token_reserves as f64 - token_amount)
+        + bonding_curve.initial_price;
+    msg!(
+        "The first price is {} and last price is {}",
+        first_price.clone(),
+        last_price.clone()
+    );
     let average_price = (first_price + last_price) / 2.0;
     msg!("The average price of token is {}", average_price);
 
