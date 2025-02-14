@@ -36,5 +36,29 @@ pub enum F44Code {
     MathOverflow,
 
     #[msg("Amount should be bigger than 0.")]
-    ZeroAmount
+    ZeroAmount,
+
+    #[msg("Invalid amount")]
+    InvalidAmount,
+
+    #[msg("Invalid slope")]
+    InvalidSlope,
+
+    #[msg("Invalid price")]
+    InvalidPrice,
+
+    #[msg("Invalid calculation result")]
+    InvalidCalculation,
+
+    #[msg("Invalid token account")]
+    InvalidTokenAccount,
+
+    #[msg("Insufficient token balance")]
+    InsufficientBalance,
+
+    #[msg("Insufficient liquidity in bonding curve")]
+    InsufficientLiquidity,
+
+    #[msg("Invalid token reserves")]
+    InvalidReserves,
 }
