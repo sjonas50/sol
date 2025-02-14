@@ -22,5 +22,7 @@ pub struct BondingCurve {
     pub token_total_supply: f64,
     pub token_mint: Pubkey,
     pub mcap_limit: f64,
+    pub current_price: f64,
+    pub current_mcap: f64,
     pub complete: bool,
 }
