@@ -5,17 +5,20 @@ pub struct CreateEvent {
     pub mint: Pubkey,
     pub bonding_curve: Pubkey,
     pub user: Pubkey,
+    pub initial_price: f64,
 }
 
 #[event]
 pub struct TradeEvent {
     pub mint: Pubkey,
     pub amount: u64,
-    pub token_amount: f64,
+    pub token_amount: u64,
     pub is_buy: bool,
     pub user: Pubkey,
     pub timestamp: i64,
-    pub token_reserves: f64
+    pub token_reserves: f64,
+    pub last_price: f64,
+    pub current_mcap: f64,
 }
 
 #[event]
